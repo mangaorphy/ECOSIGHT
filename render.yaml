@@ -6,7 +6,7 @@ services:
     dockerfilePath: ./deployment/Dockerfile
     dockerContext: .
     region: oregon
-    plan: starter
+    plan: free
     branch: main
     healthCheckPath: /status
     envVars:
@@ -20,10 +20,6 @@ services:
         value: /app/uploads
       - key: AUGMENTED_AUDIO_DIR
         value: /app/augmented_audio
-    disk:
-      name: ecosight-data
-      mountPath: /app
-      sizeGB: 10
     autoDeploy: true
 
   # Streamlit UI Service
@@ -33,7 +29,7 @@ services:
     dockerfilePath: ./deployment/Dockerfile.streamlit
     dockerContext: .
     region: oregon
-    plan: starter
+    plan: free
     branch: main
     healthCheckPath: /_stcore/health
     envVars:
