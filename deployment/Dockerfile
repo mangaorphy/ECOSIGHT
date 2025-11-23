@@ -19,10 +19,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy API code and dependencies
 COPY src/ ./src/
 COPY scripts/ ./scripts/
-COPY models/ ./models/
 
-# Create necessary directories
-RUN mkdir -p uploads augmented_audio extracted_audio
+# Create necessary directories (model will be downloaded from S3 on startup)
+RUN mkdir -p uploads augmented_audio extracted_audio models
 
 # Expose port
 EXPOSE 8000
