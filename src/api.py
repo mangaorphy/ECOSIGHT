@@ -77,73 +77,6 @@ for class_dir in ["gun_shot", "dog_bark", "engine_idling", "clips"]:
 # STARTUP: DOWNLOAD MODEL FROM S3
 # ============================================================================
 
-@app.on_event("startup")
-async def startup_event():
-    """Download model from S3 on startup if not present locally"""
-    global MODEL, YAMNET_MODEL, CLASS_NAMES, MODEL_METADATA
-    
-    logger.info("Starting up API...")
-    
-    # Check if model exists locally
-    model_path = MODELS_DIR / "yamnet_classifier_v2.keras"
-    
-    if not model_path.exists():
-        logger.info("Model not found locally, downloading from S3...")
-        try:
-            from s3_storage import S3Storage
-            s3 = S3Storage()
-            success = s3.download_model(str(MODELS_DIR))
-            
-            if success:
-                logger.info("✓ Model downloaded from S3")
-            else:
-                logger.error("✗ Failed to download model from S3")
-                # Continue anyway - load_model() will handle the error
-        except Exception as e:
-            logger.error(f"Error downloading model from S3: {e}")
-    else:
-        logger.info("Model found locally, skipping download")
-    
-    # Load the model
-    load_model()
-
-
-# ============================================================================
-# MODEL LOADING
-# ============================================================================
-
-def build_model_from_metadata(metadata):
-    """Rebuild model architecture from metadata"""
-    try:
-        num_classes = metadata['num_classes']
-        input_shape = tuple(metadata['input_shape'])
-        arch = metadata['architecture']
-        
-        model = tf.keras.Sequential([
-            tf.keras.layers.Input(shape=input_shape),
-            tf.keras.layers.Dense(arch['layers'][0], activation=arch['activation']),
-            tf.keras.layers.Dropout(arch['dropout_rates'][0]),
-            tf.keras.layers.Dense(arch['layers'][1], activation=arch['activation']),
-            tf.keras.layers.Dropout(arch['dropout_rates'][1]),
-            tf.keras.layers.Dense(arch['layers'][2], activation=arch['activation']),
-            tf.keras.layers.Dropout(arch['dropout_rates'][2]),
-            tf.keras.layers.Dense(arch['layers'][3], activation=arch['activation']),
-            tf.keras.layers.Dropout(arch['dropout_rates'][3]),
-            tf.keras.layers.Dense(num_classes, activation='softmax')
-        ])
-        
-        model.compile(
-            optimizer=tf.keras.optimizers.Adam(learning_rate=arch.get('learning_rate', 0.001)),
-            loss='sparse_categorical_crossentropy',
-            metrics=['accuracy']
-        )
-        
-        logger.info("✓ Model architecture rebuilt from metadata")
-        return model
-    except Exception as e:
-        logger.error(f"Error building model from metadata: {e}")
-        return None
-
 def load_model_artifacts():
     """Load model, class names, and metadata on startup"""
     global MODEL, YAMNET_MODEL, CLASS_NAMES, MODEL_METADATA
@@ -237,6 +170,30 @@ def load_model_artifacts():
 async def startup_event():
     """Initialize models on API startup"""
     try:
+        logger.info("Starting up API...")
+        
+        # Check if model exists locally, download from S3 if needed
+        model_path = MODELS_DIR / "yamnet_classifier_v2.keras"
+        
+        if not model_path.exists():
+            logger.info("Model not found locally, downloading from S3...")
+            try:
+                from src.s3_storage import S3Storage
+                s3 = S3Storage()
+                success = s3.download_model(str(MODELS_DIR))
+                
+                if success:
+                    logger.info("✓ Model downloaded from S3")
+                else:
+                    logger.error("✗ Failed to download model from S3")
+            except Exception as e:
+                logger.error(f"Error downloading model from S3: {e}")
+                import traceback
+                logger.error(traceback.format_exc())
+        else:
+            logger.info("Model found locally, skipping download")
+        
+        # Load model artifacts
         load_model_artifacts()
     except Exception as e:
         logger.error(f"Startup error: {e}", exc_info=True)
