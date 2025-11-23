@@ -1,7 +1,15 @@
 {
-  "buildCommand": "pip install -r config/requirements-ui.txt",
-  "devCommand": "streamlit run src/app.py",
-  "installCommand": "pip install -r config/requirements-ui.txt",
-  "framework": null,
-  "outputDirectory": "."
+  "version": 2,
+  "builds": [
+    {
+      "src": "src/app.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "src/app.py"
+    }
+  ]
 }

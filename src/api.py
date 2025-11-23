@@ -171,30 +171,46 @@ async def startup_event():
     """Initialize models on API startup"""
     try:
         logger.info("Starting up API...")
-        
-        # Check if model exists locally, download from S3 if needed
-        model_path = MODELS_DIR / "yamnet_classifier_v2.keras"
-        
-        if not model_path.exists():
-            logger.info("Model not found locally, downloading from S3...")
+
+        # Define required files
+        required_files = [
+            "yamnet_classifier_v2.keras",
+            "class_names.json",
+            "model_metadata.json",
+            "performance_metrics.json",
+            "training_history.pkl",
+        ]
+
+        # Check if any required file is missing
+        missing_files = []
+        for filename in required_files:
+            file_path = MODELS_DIR / filename
+            if not file_path.exists():
+                missing_files.append(filename)
+
+        if missing_files:
+            logger.info(f"Missing files: {missing_files}. Downloading from S3...")
             try:
                 from src.s3_storage import S3Storage
                 s3 = S3Storage()
+                # Assuming your S3Storage class has a method to download the entire models folder
+                # Or modify it to download specific files
                 success = s3.download_model(str(MODELS_DIR))
-                
+
                 if success:
-                    logger.info("✓ Model downloaded from S3")
+                    logger.info("✓ Model and metrics downloaded from S3")
                 else:
-                    logger.error("✗ Failed to download model from S3")
+                    logger.error("✗ Failed to download model and metrics from S3")
             except Exception as e:
-                logger.error(f"Error downloading model from S3: {e}")
+                logger.error(f"Error downloading model and metrics from S3: {e}")
                 import traceback
                 logger.error(traceback.format_exc())
         else:
-            logger.info("Model found locally, skipping download")
-        
+            logger.info("All required files found locally, skipping download")
+
         # Load model artifacts
         load_model_artifacts()
+
     except Exception as e:
         logger.error(f"Startup error: {e}", exc_info=True)
         logger.warning("API starting with limited functionality")
