@@ -67,9 +67,45 @@ EXTRACTED_AUDIO_DIR = BASE_DIR / "extracted_audio"
 
 # Create directories
 UPLOAD_DIR.mkdir(exist_ok=True)
+MODELS_DIR.mkdir(exist_ok=True)
 for class_dir in ["gun_shot", "dog_bark", "engine_idling", "clips"]:
     (AUGMENTED_AUDIO_DIR / class_dir).mkdir(parents=True, exist_ok=True)
     (EXTRACTED_AUDIO_DIR / class_dir).mkdir(parents=True, exist_ok=True)
+
+
+# ============================================================================
+# STARTUP: DOWNLOAD MODEL FROM S3
+# ============================================================================
+
+@app.on_event("startup")
+async def startup_event():
+    """Download model from S3 on startup if not present locally"""
+    global MODEL, YAMNET_MODEL, CLASS_NAMES, MODEL_METADATA
+    
+    logger.info("Starting up API...")
+    
+    # Check if model exists locally
+    model_path = MODELS_DIR / "yamnet_classifier_v2.keras"
+    
+    if not model_path.exists():
+        logger.info("Model not found locally, downloading from S3...")
+        try:
+            from s3_storage import S3Storage
+            s3 = S3Storage()
+            success = s3.download_model(str(MODELS_DIR))
+            
+            if success:
+                logger.info("✓ Model downloaded from S3")
+            else:
+                logger.error("✗ Failed to download model from S3")
+                # Continue anyway - load_model() will handle the error
+        except Exception as e:
+            logger.error(f"Error downloading model from S3: {e}")
+    else:
+        logger.info("Model found locally, skipping download")
+    
+    # Load the model
+    load_model()
 
 
 # ============================================================================

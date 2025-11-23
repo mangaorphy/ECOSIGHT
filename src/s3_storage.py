@@ -39,6 +39,63 @@ class S3Storage:
             logger.error(f"Failed to initialize S3 client: {e}")
             self.s3_client = None
     
+    def download_model(self, local_dir: str = "/app/models") -> bool:
+        """
+        Download trained model files from S3
+        
+        Args:
+            local_dir: Local directory to download model files to
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        if not self.s3_client:
+            logger.error("S3 client not initialized")
+            return False
+        
+        try:
+            # Create local directory
+            Path(local_dir).mkdir(parents=True, exist_ok=True)
+            
+            # Model files to download
+            model_files = [
+                "yamnet_classifier_v2.keras",
+                "model_metadata.json",
+                "class_names.json"
+            ]
+            
+            logger.info(f"Downloading model files from S3 to {local_dir}")
+            
+            for file_name in model_files:
+                s3_key = f"models/{file_name}"
+                local_path = Path(local_dir) / file_name
+                
+                try:
+                    logger.info(f"Downloading {s3_key}")
+                    self.s3_client.download_file(
+                        self.bucket_name,
+                        s3_key,
+                        str(local_path)
+                    )
+                    logger.info(f"✓ Downloaded {file_name}")
+                except ClientError as e:
+                    if e.response['Error']['Code'] == '404':
+                        logger.warning(f"File not found in S3: {s3_key}")
+                        # Only model file is required
+                        if file_name == "yamnet_classifier_v2.keras":
+                            return False
+                    else:
+                        logger.error(f"Error downloading {s3_key}: {e}")
+                        if file_name == "yamnet_classifier_v2.keras":
+                            return False
+            
+            logger.info("Model download complete")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error downloading model from S3: {e}")
+            return False
+    
     def download_extracted_audio(self, local_dir: str = "/app/extracted_audio") -> bool:
         """
         Download original/raw audio files from S3 (extracted_audio folder)
