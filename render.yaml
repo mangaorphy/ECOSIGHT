@@ -16,6 +16,15 @@ services:
         value: 1
       - key: MODEL_PATH
         value: /app/models/yamnet_classifier_v2.keras
+      # S3 credentials for model download and audio storage
+      - key: S3_BUCKET
+        sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: AWS_REGION
+        value: us-east-1
     autoDeploy: true
     # Optimized for free tier
     startCommand: uvicorn src.api:app --host 0.0.0.0 --port 8000 --workers 1 --timeout-keep-alive 120
