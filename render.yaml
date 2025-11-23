@@ -6,9 +6,13 @@ services:
     dockerfilePath: ./deployment/Dockerfile
     dockerContext: .
     region: oregon
-    plan: free
+    plan: starter  # Upgraded from free for better performance
     branch: main
     healthCheckPath: /status
+    disk:
+      name: ecosight-data
+      mountPath: /app/models
+      sizeGB: 1
     envVars:
       - key: PORT
         value: 8000
@@ -16,11 +20,9 @@ services:
         value: 1
       - key: MODEL_PATH
         value: /app/models/yamnet_classifier_v2.keras
-      - key: UPLOAD_DIR
-        value: /app/uploads
-      - key: AUGMENTED_AUDIO_DIR
-        value: /app/augmented_audio
     autoDeploy: true
+    # Increase timeouts for heavy ML operations
+    startCommand: uvicorn src.api:app --host 0.0.0.0 --port 8000 --timeout-keep-alive 300
 
   # Streamlit UI Service
   - type: web
@@ -29,7 +31,7 @@ services:
     dockerfilePath: ./deployment/Dockerfile.streamlit
     dockerContext: .
     region: oregon
-    plan: free
+    plan: starter  # Upgraded from free
     branch: main
     healthCheckPath: /_stcore/health
     envVars:
@@ -48,4 +50,6 @@ services:
         value: true
       - key: STREAMLIT_BROWSER_GATHER_USAGE_STATS
         value: false
+      - key: STREAMLIT_SERVER_MAX_UPLOAD_SIZE
+        value: 200
     autoDeploy: true

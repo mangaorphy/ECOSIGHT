@@ -16,20 +16,20 @@ COPY config/requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy API code
-COPY src/api.py .
-COPY scripts/retrain_model.py .
+# Copy API code and dependencies
+COPY src/ ./src/
+COPY scripts/ ./scripts/
 COPY models/ ./models/
 
 # Create necessary directories
-RUN mkdir -p uploads augmented_audio
+RUN mkdir -p uploads augmented_audio extracted_audio
 
 # Expose port
 EXPOSE 8000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=5 \
+# Health check with longer timeout for model loading
+HEALTHCHECK --interval=30s --timeout=30s --start-period=180s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/status')" || exit 1
 
-# Run the API
-CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run the API with increased timeout
+CMD ["uvicorn", "src.api:app", "--host", "0.0.0.0", "--port", "8000", "--timeout-keep-alive", "300"]
