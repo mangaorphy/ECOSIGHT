@@ -60,10 +60,12 @@ class S3Storage:
             # Model files to download
             model_files = [
                 "yamnet_classifier_v2.keras",
+                "class_names.json",
                 "model_metadata.json",
-                "class_names.json"
+                "performance_metrics.json",  # Add this line
+                "training_history.pkl",  
             ]
-            
+    
             logger.info(f"Downloading model files from S3 to {local_dir}")
             
             for file_name in model_files:
