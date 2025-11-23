@@ -1,0 +1,15 @@
+# EcoSight UI - Lightweight Requirements (No TensorFlow needed)
+
+# UI Framework
+streamlit==1.28.2
+plotly==5.18.0
+
+# API Communication
+requests==2.31.0
+
+# Data Processing (for UI only)
+pandas==2.1.3
+numpy==1.24.3
+
+# Utilities
+python-dotenv==1.0.0

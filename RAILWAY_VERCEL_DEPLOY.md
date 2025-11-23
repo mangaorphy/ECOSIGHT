@@ -68,13 +68,15 @@ npm i -g vercel
 
 **Build Command:**
 ```bash
-pip install -r config/requirements.txt
+pip install -r config/requirements-ui.txt
 ```
 
 **Start Command:**
 ```bash
 streamlit run src/app.py --server.port $PORT
 ```
+
+**Note:** UI uses lightweight requirements (no TensorFlow) since it only makes API calls.
 
 ### 5. Add Environment Variables
 In Vercel project settings → Environment Variables:

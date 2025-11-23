@@ -1,7 +1,7 @@
 {
-  "buildCommand": "pip install -r config/requirements.txt",
+  "buildCommand": "pip install -r config/requirements-ui.txt",
   "devCommand": "streamlit run src/app.py",
-  "installCommand": "pip install -r config/requirements.txt",
+  "installCommand": "pip install -r config/requirements-ui.txt",
   "framework": null,
   "outputDirectory": "."
 }
