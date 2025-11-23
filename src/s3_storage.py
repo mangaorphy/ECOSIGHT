@@ -62,7 +62,7 @@ class S3Storage:
                 "yamnet_classifier_v2.keras",
                 "class_names.json",
                 "model_metadata.json",
-                "performance_metrics.json",  # Add this line
+                "performance_metrics.json",
                 "training_history.pkl",  
             ]
     
