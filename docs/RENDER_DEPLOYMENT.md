@@ -1,7 +1,13 @@
 # EcoSight Wildlife Monitoring - Render Deployment Guide
 
 ## Overview
-This guide walks you through deploying EcoSight to Render with both API and UI services.
+This guide walks you through deploying EcoSight to Render with both API and UI services, including S3 integration for automatic audio storage and retraining.
+
+## 🎯 Key Features
+- ✅ **Automatic S3 Upload**: All uploaded audio files are automatically saved to S3
+- ✅ **Cloud-Based Retraining**: Downloads originals from S3, applies augmentation, trains model
+- ✅ **Cost-Efficient Storage**: Stores only originals (~$0.04/month), generates augmented files on-demand
+- ✅ **Persistent Model Storage**: Trained models persist across deployments
 
 ## Prerequisites
 - GitHub account with EcoSight repository pushed
@@ -46,13 +52,30 @@ Render will create two services from `render.yaml`:
 - Health check: `/_stcore/health`
 - Auto-connected to API service
 
-### 4. Environment Variables (Auto-configured)
+### 4. Environment Variables
 
-The `render.yaml` sets these automatically:
+**Required for S3 Integration:**
+
+Add these in Render Dashboard → Service → Environment:
+
+```bash
+S3_BUCKET=ecosight-training-data
+AWS_ACCESS_KEY_ID=<your-aws-access-key>
+AWS_SECRET_ACCESS_KEY=<your-aws-secret-key>
+AWS_REGION=us-east-1
+```
+
+**Auto-configured by render.yaml:**
 - `API_URL`: Auto-linked from ecosight-api service
 - `PORT`: 8000 (API), 8501 (UI)
 - `PYTHONUNBUFFERED`: 1
 - Streamlit server configs
+
+**Optional:**
+```bash
+MIN_NEW_SAMPLES=100  # Minimum samples before retraining
+LOG_LEVEL=INFO       # Logging verbosity
+```
 
 ### 5. Deploy
 
@@ -87,6 +110,75 @@ curl https://ecosight-api.onrender.com/status
 Render automatically monitors:
 - API: `GET /status` every 30s
 - UI: `GET /_stcore/health` every 30s
+
+## How Audio Upload Works on Render
+
+### Upload Flow
+1. **User uploads audio** via UI `/upload` endpoint
+2. **API saves locally** to `extracted_audio/<class>/`
+3. **API uploads to S3** `s3://ecosight-training-data/extracted_audio/<class>/`
+4. **Returns success** with S3 upload confirmation
+
+### Example Response
+```json
+{
+  "success": true,
+  "message": "File uploaded successfully",
+  "file_path": "/app/extracted_audio/gun_shot/20251123_165432_shot.wav",
+  "class": "gun_shot",
+  "s3_uploaded": true,
+  "timestamp": "2025-11-23T16:54:32"
+}
+```
+
+### Storage Architecture
+
+| Location | Content | Persistent? | Purpose |
+|----------|---------|-------------|---------|
+| `extracted_audio/` (Render) | Original uploads | ❌ Ephemeral | Temporary local copy |
+| `s3://bucket/extracted_audio/` | Original uploads | ✅ Permanent | Source of truth |
+| `augmented_audio/` (Render) | Generated during retraining | ❌ Temporary | Training data |
+| `models/` (Render) | Trained model | ✅ Persistent disk | Active model |
+
+### Why S3?
+- ✅ **Permanent storage**: Files persist even if Render restarts
+- ✅ **Cost-efficient**: ~$0.04/month for 1.7GB (vs ephemeral Render storage)
+- ✅ **Retraining source**: Model downloads originals from S3
+- ✅ **Automatic backup**: All uploads backed up in cloud
+
+## Retraining on Render
+
+### Trigger Retraining
+```bash
+curl -X POST "https://ecosight-api.onrender.com/retrain" \
+  -H "Content-Type: application/json" \
+  -d '{"min_samples": 100}'
+```
+
+### Retraining Process
+1. **Download from S3**: `s3://bucket/extracted_audio/` → `/app/extracted_audio/`
+2. **Apply augmentation**: 1 file → 6 files (1 original + 5 variants)
+3. **Train model**: YAMNet embeddings → Classifier
+4. **Save model**: `/app/models/yamnet_classifier.keras`
+5. **Cleanup**: Delete augmented files (save disk space)
+
+### Expected Timeline
+- Download from S3: ~2-5 min (for 3500 files)
+- Augmentation: ~5-10 min (3500 → 21000 files)
+- Training: ~10-20 min (depends on data size)
+- **Total**: ~20-30 minutes
+
+### Monitoring Retraining
+Check logs for:
+```
+✓ Retraining started
+✓ Downloaded 3500 files from S3
+✓ Applied augmentation: 3500 → 21000 files
+✓ Extracting YAMNet embeddings...
+✓ Training classifier...
+✓ Model training complete
+✓ Model saved to /app/models/yamnet_classifier.keras
+```
 
 ## Persistent Storage
 

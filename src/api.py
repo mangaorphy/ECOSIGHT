@@ -63,11 +63,13 @@ BASE_DIR = Path(__file__).parent
 MODELS_DIR = BASE_DIR / "models"
 UPLOAD_DIR = BASE_DIR / "uploads"
 AUGMENTED_AUDIO_DIR = BASE_DIR / "augmented_audio"
+EXTRACTED_AUDIO_DIR = BASE_DIR / "extracted_audio"
 
 # Create directories
 UPLOAD_DIR.mkdir(exist_ok=True)
 for class_dir in ["gun_shot", "dog_bark", "engine_idling", "clips"]:
     (AUGMENTED_AUDIO_DIR / class_dir).mkdir(parents=True, exist_ok=True)
+    (EXTRACTED_AUDIO_DIR / class_dir).mkdir(parents=True, exist_ok=True)
 
 
 # ============================================================================
@@ -472,6 +474,8 @@ async def upload_training_data(
     """
     Upload new audio file for training data
     
+    Saves file to extracted_audio/ (originals) and uploads to S3
+    
     Args:
         file: Audio file
         class_name: Class label for the audio
@@ -488,10 +492,10 @@ async def upload_training_data(
     
     try:
         # Create class directory if needed
-        class_dir = AUGMENTED_AUDIO_DIR / class_name
-        class_dir.mkdir(exist_ok=True)
+        class_dir = EXTRACTED_AUDIO_DIR / class_name
+        class_dir.mkdir(parents=True, exist_ok=True)
         
-        # Save file
+        # Save file to extracted_audio (originals)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"{timestamp}_{file.filename}"
         file_path = class_dir / filename
@@ -499,18 +503,35 @@ async def upload_training_data(
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
         
-        logger.info(f"File uploaded: {file_path}")
+        logger.info(f"File saved to extracted_audio: {file_path}")
+        
+        # Upload to S3 if configured
+        s3_uploaded = False
+        try:
+            from s3_storage import S3Storage
+            s3 = S3Storage()
+            
+            # Upload single file to S3
+            s3_key = f"extracted_audio/{class_name}/{filename}"
+            s3_uploaded = s3.upload_file(str(file_path), s3_key)
+            
+            if s3_uploaded:
+                logger.info(f"File uploaded to S3: {s3_key}")
+        except Exception as s3_error:
+            logger.warning(f"S3 upload failed (continuing anyway): {s3_error}")
         
         return {
             "success": True,
             "message": "File uploaded successfully",
             "file_path": str(file_path),
             "class": class_name,
+            "s3_uploaded": s3_uploaded,
             "timestamp": datetime.now().isoformat()
         }
         
     except Exception as e:
         logger.error(f"Upload error: {e}")
+        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
 

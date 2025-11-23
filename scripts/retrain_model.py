@@ -27,8 +27,25 @@ from tensorflow.keras.utils import to_categorical
 import warnings
 warnings.filterwarnings('ignore')
 
+# Import S3 storage utility and audio augmentation
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+try:
+    from s3_storage import get_s3_storage
+    S3_AVAILABLE = True
+except ImportError:
+    print("⚠️  S3 storage not available (boto3 not installed)")
+    S3_AVAILABLE = False
+
+try:
+    from audio_augmentation import augment_directory
+    AUGMENTATION_AVAILABLE = True
+except ImportError:
+    print("⚠️  Audio augmentation not available")
+    AUGMENTATION_AVAILABLE = False
+
 # Configure paths
 BASE_DIR = Path("/app") if Path("/app").exists() else Path(__file__).parent.parent
+EXTRACTED_AUDIO_DIR = BASE_DIR / "extracted_audio"
 AUGMENTED_AUDIO_DIR = BASE_DIR / "augmented_audio"
 MODELS_DIR = BASE_DIR / "models"
 FEATURES_DIR = BASE_DIR / "features"
@@ -52,12 +69,100 @@ class ModelRetrainingPipeline:
         self.augmented_audio_dir = Path(augmented_audio_dir)
         self.retraining_log_path = self.models_dir / "retraining_log.json"
         
+        # Download training data from S3 if available
+        self._download_training_data_from_s3()
+        
         # Load retraining history
         if self.retraining_log_path.exists():
             with open(self.retraining_log_path, 'r') as f:
                 self.retraining_log = json.load(f)
         else:
             self.retraining_log = {"retraining_history": []}
+    
+    def _download_training_data_from_s3(self):
+        """
+        Download extracted audio from S3 and apply augmentation
+        
+        Workflow:
+        1. Download extracted_audio/ from S3 (original/raw files)
+        2. Apply augmentation to create augmented_audio/
+        3. Use augmented_audio/ for training
+        """
+        if not S3_AVAILABLE:
+            print("ℹ️  S3 not configured, using local training data")
+            return
+        
+        # Check if S3 is configured
+        s3_bucket = os.getenv("S3_BUCKET")
+        aws_access_key = os.getenv("AWS_ACCESS_KEY_ID")
+        
+        if not s3_bucket or not aws_access_key:
+            print("ℹ️  S3 credentials not set, using local training data")
+            return
+        
+        print("=" * 70)
+        print("DOWNLOADING AND AUGMENTING TRAINING DATA")
+        print("=" * 70)
+        print(f"📦 Bucket: {s3_bucket}")
+        print(f"📥 Downloading to: {EXTRACTED_AUDIO_DIR}")
+        print(f"🎵 Augmenting to: {self.augmented_audio_dir}")
+        print("")
+        
+        try:
+            # Step 1: Download extracted_audio from S3
+            print("Step 1: Downloading extracted audio from S3...")
+            s3_storage = get_s3_storage()
+            success = s3_storage.download_extracted_audio(str(EXTRACTED_AUDIO_DIR))
+            
+            if not success:
+                print("⚠️  S3 download failed, using local data if available")
+                return
+            
+            # Count downloaded files
+            extracted_files = sum(1 for _ in EXTRACTED_AUDIO_DIR.rglob("*.wav")) + \
+                             sum(1 for _ in EXTRACTED_AUDIO_DIR.rglob("*.mp3"))
+            print(f"✓ Downloaded {extracted_files} extracted audio files")
+            print("")
+            
+            # Step 2: Apply augmentation
+            if not AUGMENTATION_AVAILABLE:
+                print("⚠️  Augmentation not available, using extracted files directly")
+                return
+            
+            print("Step 2: Applying audio augmentation...")
+            print("  This creates multiple variants of each audio file")
+            print("  Augmentations: pitch shift, time stretch, noise, volume, etc.")
+            print("")
+            
+            # Create augmented_audio directory
+            self.augmented_audio_dir.mkdir(exist_ok=True, parents=True)
+            
+            # Apply augmentation to all classes
+            results = augment_directory(
+                input_dir=EXTRACTED_AUDIO_DIR,
+                output_dir=self.augmented_audio_dir,
+                sr=SAMPLE_RATE,
+                augmentations_per_file=5  # Create 5 augmented versions per file
+            )
+            
+            # Show augmentation results
+            print("")
+            print("Augmentation Results:")
+            print("-" * 70)
+            for class_name, stats in results.items():
+                print(f"  {class_name}: "
+                      f"{stats['original_files']} → {stats['augmented_files']} files "
+                      f"({stats['increase_factor']:.1f}x)")
+            print("-" * 70)
+            
+            total_augmented = sum(s['augmented_files'] for s in results.values())
+            print(f"✓ Total augmented files: {total_augmented}")
+            
+        except Exception as e:
+            print(f"⚠️  Error in S3 download/augmentation: {e}")
+            print("   Using local training data if available")
+        
+        print("")
     
     def check_retraining_trigger(self, min_new_samples=100):
         """Check if retraining should be triggered based on new data"""
