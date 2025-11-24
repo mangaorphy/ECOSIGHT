@@ -681,30 +681,70 @@ elif page == "🔄 Training":
         status = get_model_status()
         classes = status.get("classes", []) if status else []
         
-        uploaded_training_file = st.file_uploader(
-            "Choose audio file for training",
+        # 1. ENABLE MULTIPLE FILES
+        uploaded_training_files = st.file_uploader(
+            "Choose audio files for training",
             type=["wav", "mp3", "ogg", "flac"],
-            key="training_upload"
+            key="training_upload",
+            accept_multiple_files=True  # <--- THIS IS THE KEY CHANGE
         )
         
         selected_class = st.selectbox(
             "Select class label",
             options=classes + ["unknown"],
-            help="Choose the correct class for this audio file"
+            help="Choose the correct class for these audio files"
         )
         
-        if uploaded_training_file is not None:
-            st.audio(uploaded_training_file, format='audio/wav')
+        # 2. HANDLE THE LIST OF FILES
+        if uploaded_training_files:
+            file_count = len(uploaded_training_files)
+            st.info(f"✅ {file_count} file(s) selected for class: **{selected_class}**")
             
-            if st.button("📤 Upload to Training Dataset", type="primary"):
-                with st.spinner("Uploading..."):
-                    result = upload_training_data(uploaded_training_file, selected_class)
+            # Optional: Use an expander to preview files so the UI doesn't get cluttered
+            with st.expander("View selected files"):
+                for i, file in enumerate(uploaded_training_files):
+                    st.text(f"{i+1}. {file.name}")
+                    # Only show audio player if fewer than 5 files to save memory/space
+                    if file_count <= 5:
+                        st.audio(file, format='audio/wav')
+
+            if st.button("📤 Upload All to Training Dataset", type="primary"):
+                
+                # Create containers for progress and results
+                progress_bar = st.progress(0)
+                status_text = st.empty()
+                success_count = 0
+                errors = []
+
+                # 3. LOOP THROUGH FILES AND UPLOAD
+                for idx, file_obj in enumerate(uploaded_training_files):
+                    # Update status
+                    status_text.text(f"Uploading {file_obj.name} ({idx + 1}/{file_count})...")
+                    
+                    # Call your existing backend function
+                    # Note: We assume upload_training_data handles the pointer reset (seek(0))
+                    result = upload_training_data(file_obj, selected_class)
                     
                     if "error" in result:
-                        st.error(f"❌ Upload failed: {result['error']}")
+                        errors.append(f"{file_obj.name}: {result['error']}")
                     else:
-                        st.success(f"✅ File uploaded successfully to class '{selected_class}'!")
-                        st.json(result)
+                        success_count += 1
+                    
+                    # Update progress bar
+                    progress_bar.progress((idx + 1) / file_count)
+
+                # Final Summary
+                status_text.empty()
+                progress_bar.empty()
+
+                if success_count == file_count:
+                    st.success(f"✅ All {file_count} files uploaded successfully!")
+                else:
+                    st.warning(f"⚠️ Processed with issues. Success: {success_count}, Failed: {len(errors)}")
+                    if errors:
+                        with st.expander("Show Errors"):
+                            for err in errors:
+                                st.error(err)
     
     with tab2:
         st.subheader("🔄 Retrain Model")

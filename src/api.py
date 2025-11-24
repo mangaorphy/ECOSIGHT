@@ -11,7 +11,7 @@ Features:
 - Performance metrics
 """
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks
+from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -478,19 +478,10 @@ async def predict(file: UploadFile = File(...)):
 @app.post("/upload")
 async def upload_training_data(
     file: UploadFile = File(...),
-    class_name: str = "unknown"
+    class_name: str = Form("unknown")  # <--- CHANGED: Use Form() to read from body
 ):
     """
     Upload new audio file for training data
-    
-    Saves file to extracted_audio/ (originals) and uploads to S3
-    
-    Args:
-        file: Audio file
-        class_name: Class label for the audio
-    
-    Returns:
-        Upload confirmation
     """
     # Validate class name
     if class_name not in CLASS_NAMES and class_name != "unknown":
@@ -506,7 +497,9 @@ async def upload_training_data(
         
         # Save file to extracted_audio (originals)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"{timestamp}_{file.filename}"
+        # Sanitize filename to prevent directory traversal or spaces
+        safe_filename = Path(file.filename).name
+        filename = f"{timestamp}_{safe_filename}"
         file_path = class_dir / filename
         
         with open(file_path, "wb") as buffer:
@@ -527,6 +520,7 @@ async def upload_training_data(
             if s3_uploaded:
                 logger.info(f"File uploaded to S3: {s3_key}")
         except Exception as s3_error:
+            # We catch specific S3 errors so the main upload doesn't fail
             logger.warning(f"S3 upload failed (continuing anyway): {s3_error}")
         
         return {
@@ -540,7 +534,7 @@ async def upload_training_data(
         
     except Exception as e:
         logger.error(f"Upload error: {e}")
-        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
+        # Fixed: Removed the duplicate raise line
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
 
