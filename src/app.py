@@ -137,7 +137,7 @@ def upload_training_data(file, class_name):
         response = requests.post(
             f"{API_URL}/upload",
             files=files,
-            params=data,
+            data=data,
             timeout=30
         )
         if response.status_code == 200:
