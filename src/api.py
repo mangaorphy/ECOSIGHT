@@ -510,13 +510,11 @@ async def upload_training_data(
         # Upload to S3 if configured
         s3_uploaded = False
         try:
-            from s3_storage import S3Storage
+            from src.s3_storage import S3Storage
             s3 = S3Storage()
-            
             # Upload single file to S3
             s3_key = f"extracted_audio/{class_name}/{filename}"
             s3_uploaded = s3.upload_file(str(file_path), s3_key)
-            
             if s3_uploaded:
                 logger.info(f"File uploaded to S3: {s3_key}")
         except Exception as s3_error:
@@ -572,9 +570,8 @@ async def trigger_retraining(
             
             logger.info(f"Starting retraining: {request.trigger_reason}")
             
-            # Run the retraining script (it's copied to /app in Docker)
-            script_path = Path("/app/retrain_model.py")
-            
+            # Run the retraining script from the correct path
+            script_path = Path("/app/scripts/retrain_model.py")
             result = subprocess.run(
                 [sys.executable, str(script_path)],
                 capture_output=True,
