@@ -1,7 +1,7 @@
 """
 Final weight application script - applies only Dense layer weights
 
-This script was used to fix a Keras version compatibility issue where your trained
+This script was used to fix a Keras version compatibility issue where the trained
 model (yamnet_classifier.keras) couldn't be loaded due to changes between Keras versions.
 
 What it does:
@@ -9,10 +9,6 @@ What it does:
 2. Rebuilds the model architecture using the metadata (model_metadata.json)
 3. Applies the extracted weights to the new model
 4. Saves as yamnet_classifier_v2.keras in a compatible format
-
-This was a ONE-TIME conversion script. Your model is now saved as yamnet_classifier_v2.keras
-and can be loaded normally, so you don't need to run this again unless you have another
-incompatible model file to convert.
 """
 
 import h5py

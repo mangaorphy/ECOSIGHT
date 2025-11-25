@@ -1,0 +1,42 @@
+{
+  "model_name": "YAMNet Wildlife Classifier",
+  "model_type": "Dense Neural Network with YAMNet Embeddings",
+  "training_date": "2025-11-17 20:45:45",
+  "num_classes": 4,
+  "classes": [
+    "clips",
+    "dog_bark",
+    "engine_idling",
+    "gun_shot"
+  ],
+  "input_shape": [
+    1024
+  ],
+  "test_accuracy": 0.9929808378219604,
+  "test_loss": 0.025596601888537407,
+  "sample_rate": 16000,
+  "architecture": {
+    "layers": [
+      512,
+      256,
+      128,
+      64
+    ],
+    "activation": "relu",
+    "dropout_rates": [
+      0.5,
+      0.4,
+      0.3,
+      0.2
+    ],
+    "optimizer": "Adam",
+    "learning_rate": 0.001
+  },
+  "training_config": {
+    "epochs": 100,
+    "batch_size": 64,
+    "train_samples": 9976,
+    "val_samples": 2131,
+    "test_samples": 2137
+  }
+}

@@ -1,4 +1,4 @@
-# EcoSight UI - Lightweight Requirements (No TensorFlow needed)
+# EcoSight UI - Lightweight Requirements
 
 # UI Framework
 streamlit==1.28.2

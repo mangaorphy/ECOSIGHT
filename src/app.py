@@ -522,14 +522,13 @@ elif page == "🎯 Predictions":
     st.markdown("""
     Upload an audio file to classify wildlife sounds. The model will identify:
     - 🔫 Gun shots (anti-poaching alerts)
-    - 🦃 Guinea fowl
     - 🐕 Dogs
-    - 🚗 Vehicles
-    - 🔇 Silence/Background noise
+    - 🚗 Engine Idling
+    - Humane voices
     """)
     
     uploaded_file = st.file_uploader(
-        "Choose an audio file",
+        "Choose an audio files",
         type=["wav", "mp3", "ogg", "flac"],
         help="Supported formats: WAV, MP3, OGG, FLAC"
     )

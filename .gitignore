@@ -14,11 +14,11 @@ audio_data/
 features/
 
 # Model files (large) - stored in S3
-models/
-*.keras
-*.h5
-*.pb
-*.tflite
+# models/
+# *.keras
+# *.h5
+# *.pb
+# *.tflite
 
 # Python
 __pycache__/

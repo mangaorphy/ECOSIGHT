@@ -1,5 +1,9 @@
 # 🦜 EcoSight Wildlife Monitoring System
 
+## PUBLIC URLS
+**UI:** [EcoSight Streamlit App](https://ecosight-msbnsdkoclwmfdohxvvxwq.streamlit.app/)
+**API:** [EcoSight FastAPI Endpoint](https://ecosight-api-production.up.railway.app)
+   
 ## Anti-Poaching Wildlife Protection with AI
 
 [![Python](https://img.shields.io/badge/Python-3.10-blue.svg)](https://www.python.org/)
@@ -30,14 +34,26 @@
 EcoSight is an AI-powered wildlife sound classification system designed for anti-poaching efforts. The system uses deep learning (YAMNet embeddings) to classify audio recordings and detect critical events like gunshots in real-time.
 
 **Key Capabilities:**
-- 🎵 Real-time audio classification
-- 🔫 Gun shot detection (critical for anti-poaching)
-- 🦃 Wildlife sound recognition (guineafowl, dogs, vehicles)
+- Real-time audio classification
+- Gun shot detection (critical for anti-poaching)
 - 🔄 Automated model retraining
 - 📊 Performance monitoring & analytics
-- 🚀 Production-ready deployment
+- Production-ready deployment
 
 ---
+
+## Data Sources
+
+EcoSight uses the [UrbanSound8K](https://urbansounddataset.weebly.com/urbansound8k.html) dataset for training and evaluation. Specific audio classes—such as gun_shot, engine_idling, and dog_bark—are extracted using a custom script.
+
+**Download UrbanSound8K:**
+```bash
+curl -L -o ~/Downloads/urbansound8k.zip \
+  https://www.kaggle.com/api/v1/datasets/download/chrisfilo/urbansound8k
+```
+
+**Extraction Script:**
+A script (`models/extract_audio_files.py`) is provided to extract relevant classes from the dataset for model training.
 
 ## ✨ Features
 
@@ -77,12 +93,12 @@ EcoSight is an AI-powered wildlife sound classification system designed for anti
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                     CLIENT LAYER                             │
-│  (Web Browser, Mobile App, IoT Devices)                     │
+│                     (Web Browser)                            │
 └─────────────────────────────────────────────────────────────┘
                             │
                             ▼
@@ -113,7 +129,7 @@ EcoSight is an AI-powered wildlife sound classification system designed for anti
          │
          ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                   STORAGE LAYER                              │
+│                   STORAGE LAYER (STORED IN S3)                             │
 │  - Model Artifacts (models/)                                │
 │  - Training Data (augmented_audio/)                         │
 │  - Metadata & Logs (JSON files)                             │
@@ -122,7 +138,7 @@ EcoSight is an AI-powered wildlife sound classification system designed for anti
 
 ---
 
-## 📦 Installation
+## Installation
 
 ### Prerequisites
 
@@ -157,7 +173,7 @@ mkdir -p models uploads augmented_audio
 
 ---
 
-## 🚀 Usage
+## Usage
 
 ### Option 1: Local Development
 
@@ -283,7 +299,7 @@ curl http://localhost:8000/health
 
 ---
 
-## 🧪 Load Testing
+## Load Testing
 
 ### Using Locust
 
@@ -344,120 +360,9 @@ locust -f locustfile.py --host=http://localhost:80 \
   --users=100 --spawn-rate=10 --run-time=3m --headless --csv=scale_5
 ```
 
-### Expected Results
-
-| Metric | 1 Container | 3 Containers | 5 Containers |
-|--------|-------------|--------------|--------------|
-| Avg Response Time | ~500ms | ~200ms | ~150ms |
-| Max RPS | ~50 | ~150 | ~250 |
-| P95 Latency | ~800ms | ~350ms | ~250ms |
-| Error Rate | <1% | <0.5% | <0.1% |
-
----
-
 ## ☁️ Cloud Deployment
 
-### AWS Deployment (Elastic Container Service)
 
-#### 1. Push Docker Image to ECR
-
-```bash
-# Authenticate Docker to ECR
-aws ecr get-login-password --region us-east-1 | \
-  docker login --username AWS --password-stdin <account-id>.dkr.ecr.us-east-1.amazonaws.com
-
-# Build and tag image
-docker build -t ecosight-api .
-docker tag ecosight-api:latest <account-id>.dkr.ecr.us-east-1.amazonaws.com/ecosight-api:latest
-
-# Push to ECR
-docker push <account-id>.dkr.ecr.us-east-1.amazonaws.com/ecosight-api:latest
-```
-
-#### 2. Create ECS Task Definition
-
-```json
-{
-  "family": "ecosight-api",
-  "containerDefinitions": [
-    {
-      "name": "ecosight-api",
-      "image": "<account-id>.dkr.ecr.us-east-1.amazonaws.com/ecosight-api:latest",
-      "memory": 4096,
-      "cpu": 2048,
-      "essential": true,
-      "portMappings": [
-        {
-          "containerPort": 8000,
-          "protocol": "tcp"
-        }
-      ],
-      "healthCheck": {
-        "command": ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"],
-        "interval": 30,
-        "timeout": 10,
-        "retries": 3,
-        "startPeriod": 40
-      }
-    }
-  ]
-}
-```
-
-#### 3. Create ECS Service with Auto-Scaling
-
-```bash
-# Create service
-aws ecs create-service \
-  --cluster ecosight-cluster \
-  --service-name ecosight-api-service \
-  --task-definition ecosight-api \
-  --desired-count 3 \
-  --launch-type FARGATE \
-  --network-configuration "awsvpcConfiguration={subnets=[subnet-xxx],securityGroups=[sg-xxx],assignPublicIp=ENABLED}"
-
-# Setup auto-scaling
-aws application-autoscaling register-scalable-target \
-  --service-namespace ecs \
-  --scalable-dimension ecs:service:DesiredCount \
-  --resource-id service/ecosight-cluster/ecosight-api-service \
-  --min-capacity 2 \
-  --max-capacity 10
-```
-
-### Google Cloud Platform (Cloud Run)
-
-```bash
-# Build and deploy
-gcloud builds submit --tag gcr.io/PROJECT_ID/ecosight-api
-gcloud run deploy ecosight-api \
-  --image gcr.io/PROJECT_ID/ecosight-api \
-  --platform managed \
-  --region us-central1 \
-  --allow-unauthenticated \
-  --memory 4Gi \
-  --cpu 2 \
-  --max-instances 10
-```
-
-### Azure (Container Instances)
-
-```bash
-# Create resource group
-az group create --name ecosight-rg --location eastus
-
-# Deploy container
-az container create \
-  --resource-group ecosight-rg \
-  --name ecosight-api \
-  --image <registry>/ecosight-api:latest \
-  --cpu 2 \
-  --memory 4 \
-  --ports 8000 \
-  --dns-name-label ecosight-api
-```
-
----
 
 ## 🔄 Model Retraining
 
@@ -554,29 +459,7 @@ if should_retrain:
 
 #### Prometheus Metrics (Optional)
 
-```python
-# Add to api.py
-from prometheus_client import Counter, Histogram, Gauge
-
-prediction_counter = Counter('predictions_total', 'Total predictions made')
-prediction_latency = Histogram('prediction_latency_seconds', 'Prediction latency')
-model_accuracy = Gauge('model_accuracy', 'Current model accuracy')
-```
-
 #### CloudWatch Logs (AWS)
-
-```bash
-# View logs
-aws logs tail /ecs/ecosight-api --follow
-
-# Create metric filter
-aws logs put-metric-filter \
-  --log-group-name /ecs/ecosight-api \
-  --filter-name PredictionErrors \
-  --filter-pattern "[timestamp, request_id, level=ERROR]" \
-  --metric-transformations \
-    metricName=PredictionErrors,metricNamespace=EcoSight,metricValue=1
-```
 
 ---
 
@@ -613,7 +496,7 @@ EcoSight/
 
 ---
 
-## 🤝 Contributing
+##  Contributing
 
 Contributions are welcome! Please follow these steps:
 
@@ -625,31 +508,17 @@ Contributions are welcome! Please follow these steps:
 
 ---
 
-## 📄 License
-
-This project is licensed under the MIT License - see LICENSE file for details.
-
----
-
 ## 👥 Authors
 
 - **EcoSight Team** - Wildlife Conservation & AI
 
 ---
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - YAMNet pretrained model from TensorFlow Hub
 - AudioSet dataset
 - Open-source community
-
----
-
-## 📞 Support
-
-For issues and questions:
-- GitHub Issues: [https://github.com/yourusername/ecosight/issues](https://github.com/yourusername/ecosight/issues)
-- Email: support@ecosight.org
 
 ---
 
