@@ -3,7 +3,9 @@
 ## PUBLIC URLS
 **UI:** [EcoSight Streamlit App](https://ecosight-msbnsdkoclwmfdohxvvxwq.streamlit.app/)
 **API:** [EcoSight FastAPI Endpoint](https://ecosight-api-production.up.railway.app)
-   
+
+**Training Data on S3:** [EcoSight S3 Bucket](s3://ecosight-training-data/extracted_audio/)
+
 ## Anti-Poaching Wildlife Protection with AI
 
 [![Python](https://img.shields.io/badge/Python-3.10-blue.svg)](https://www.python.org/)
@@ -29,7 +31,7 @@
 
 ---
 
-## 🎯 Overview
+## Overview
 
 EcoSight is an AI-powered wildlife sound classification system designed for anti-poaching efforts. The system uses deep learning (YAMNet embeddings) to classify audio recordings and detect critical events like gunshots in real-time.
 
@@ -54,6 +56,9 @@ curl -L -o ~/Downloads/urbansound8k.zip \
 
 **Extraction Script:**
 A script (`models/extract_audio_files.py`) is provided to extract relevant classes from the dataset for model training.
+
+**Locust Load Testing Results:**
+![Locust Load Testing Results](tests/locust_testing.png)
 
 ## ✨ Features
 
@@ -150,7 +155,7 @@ A script (`models/extract_audio_files.py`) is provided to extract relevant class
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/yourusername/ecosight.git
+git clone https://github.com/mangaorphy/ecosight.git
 cd ecosight
 
 # 2. Create virtual environment

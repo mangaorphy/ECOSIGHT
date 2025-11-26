@@ -1,7 +1,0 @@
-Method,Name,Error,Occurrences
-POST,/predict,CatchResponseError('Failed: 502'),611
-GET,/metrics,CatchResponseError('Metrics fetch failed: 502'),102
-POST,/predict,CatchResponseError('Prediction failed: 502'),300
-GET,/status,CatchResponseError('Status check failed: 502'),130
-POST,/predict,HTTPError('502 Server Error: Bad Gateway for url: /predict'),613
-GET,/health,CatchResponseError('Health check failed: 502'),28
