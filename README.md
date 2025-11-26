@@ -3,6 +3,7 @@
 ## PUBLIC URLS
 **UI:** [EcoSight Streamlit App](https://ecosight-msbnsdkoclwmfdohxvvxwq.streamlit.app/)
 **API:** [EcoSight FastAPI Endpoint](https://ecosight-api-production.up.railway.app)
+**Youtube Demo:** [EcoSight Wildlife Monitoring Demo](https://youtu.be/J03o01uasyk)
 
 **Training Data on S3:** [EcoSight S3 Bucket](s3://ecosight-training-data/extracted_audio/)
 
